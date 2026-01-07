@@ -1,0 +1,75 @@
+{
+  "name": "@aitofy/youtube",
+  "version": "0.1.0",
+  "description": "Free YouTube utilities - get transcripts, channel videos, and more without API key",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "bin": {
+    "youtube-mcp": "./dist/mcp.js"
+  },
+  "scripts": {
+    "dev": "tsup src/index.ts src/mcp.ts --watch",
+    "build": "tsup src/index.ts src/mcp.ts --format cjs,esm --dts --clean",
+    "test": "npx tsx tests/test-typescript.ts",
+    "prepublishOnly": "npm run build",
+    "lint": "eslint src/",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "youtube",
+    "transcript",
+    "subtitles",
+    "captions",
+    "channel",
+    "videos",
+    "scraper",
+    "api",
+    "no-api-key",
+    "youtube-transcript",
+    "youtube-captions",
+    "youtube-subtitles",
+    "video-transcript",
+    "typescript",
+    "nodejs",
+    "mcp",
+    "claude",
+    "chatgpt",
+    "ai"
+  ],
+  "author": "Aitofy",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aitofy-dev/youtube"
+  },
+  "homepage": "https://aitofy.dev",
+  "bugs": {
+    "url": "https://github.com/aitofy-dev/youtube/issues"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.25.1",
+    "fast-xml-parser": "^4.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsup": "^8.5.1",
+    "tsx": "^4.0.0",
+    "typescript": "^5.3.0"
+  }
+}
