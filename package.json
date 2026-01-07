@@ -15,7 +15,8 @@
   "files": [
     "dist",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "llms.txt"
   ],
   "bin": {
     "youtube-mcp": "./dist/mcp.js"
@@ -35,19 +36,28 @@
     "captions",
     "channel",
     "videos",
-    "scraper",
     "api",
     "no-api-key",
+    "free-youtube-api",
+    "youtube-api-alternative",
+    "youtube-without-api-key",
     "youtube-transcript",
     "youtube-captions",
     "youtube-subtitles",
     "video-transcript",
+    "channel-videos",
+    "video-search",
+    "youtube-scraper",
+    "ytdl-alternative",
+    "innertube",
     "typescript",
     "nodejs",
+    "esm",
     "mcp",
     "claude",
     "chatgpt",
-    "ai"
+    "ai-tools",
+    "model-context-protocol"
   ],
   "author": "Aitofy",
   "license": "MIT",
