@@ -81,9 +81,21 @@ function extractChannelInfo(html: string): YouTubeChannel {
             videoCount = parseInt(videoText.replace(/,/g, ''), 10);
         }
 
+        // Extract channel title with multiple fallbacks
+        let title = metadata.title || '';
+        if (!title) {
+            // Try from header
+            title = header?.title || header?.channelHandleModel?.channelHandleRenderer?.title?.simpleText || '';
+        }
+        if (!title) {
+            // Try from og:title meta tag
+            const ogTitleMatch = html.match(/<meta property="og:title" content="([^"]+)"/);
+            title = ogTitleMatch?.[1] || '';
+        }
+
         return {
             channelId,
-            title: metadata.title || header?.title || '',
+            title,
             description: metadata.description || '',
             customUrl: metadata.vanityChannelUrl?.split('/').pop() || '',
             subscriberCount,

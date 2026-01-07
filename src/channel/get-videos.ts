@@ -3,7 +3,7 @@
  *
  * Sử dụng 2 methods:
  * 1. RSS Feed - nhanh, stable, nhưng chỉ 15 videos
- * 2. Scraping - lấy được nhiều hơn với pagination
+ * 2. Scraping - lấy được nhiều hơn với pagination (continuation token support)
  */
 
 import { XMLParser } from 'fast-xml-parser';
@@ -25,6 +25,13 @@ export interface GetChannelVideosOptions {
 
     /** Content type filter */
     contentType?: 'videos' | 'shorts' | 'streams';
+}
+
+/** Internal context for channel metadata */
+interface ChannelContext {
+    channelId: string;
+    channelTitle: string;
+    apiKey: string;
 }
 
 /**
@@ -108,7 +115,7 @@ async function getVideosFromRSS(channelId: string, limit: number): Promise<YouTu
 }
 
 /**
- * Get videos using page scraping (supports pagination)
+ * Get videos using page scraping (supports pagination via continuation tokens)
  */
 async function getVideosFromScraping(
     channelInfo: { type: string; value: string },
@@ -150,22 +157,46 @@ async function getVideosFromScraping(
     }
 
     const html = await response.text();
-    return extractVideosFromHTML(html, limit);
+
+    // Extract initial data and channel context
+    const { videos, continuationToken, context } = extractInitialVideosFromHTML(html, limit);
+
+    // If we need more videos and have a continuation token, fetch additional pages
+    if (videos.length < limit && continuationToken && context) {
+        await fetchMoreVideos(videos, continuationToken, context, limit);
+    }
+
+    return videos.slice(0, limit);
 }
 
 /**
- * Extract videos from HTML page
+ * Extract initial videos and continuation token from HTML page
  */
-function extractVideosFromHTML(html: string, limit: number): YouTubeVideo[] {
+function extractInitialVideosFromHTML(
+    html: string,
+    limit: number
+): { videos: YouTubeVideo[]; continuationToken: string | null; context: ChannelContext | null } {
     // Find ytInitialData
     const dataMatch = html.match(/var ytInitialData = (.+?);<\/script>/s);
     if (!dataMatch) {
-        return [];
+        return { videos: [], continuationToken: null, context: null };
     }
+
+    // Extract API key for continuation requests
+    const apiKeyMatch = html.match(/"INNERTUBE_API_KEY":"([^"]+)"/);
+    const apiKey = apiKeyMatch?.[1] || '';
 
     try {
         const data = JSON.parse(dataMatch[1]);
         const videos: YouTubeVideo[] = [];
+        let continuationToken: string | null = null;
+
+        // Extract channel metadata
+        const metadata = data?.metadata?.channelMetadataRenderer || {};
+        const channelId = metadata.externalId || '';
+        const channelTitle = metadata.title || '';
+
+        const context: ChannelContext = { channelId, channelTitle, apiKey };
 
         // Navigate to videos tab content
         const tabs = data?.contents?.twoColumnBrowseResultsRenderer?.tabs || [];
@@ -175,13 +206,18 @@ function extractVideosFromHTML(html: string, limit: number): YouTubeVideo[] {
             if (!tabContent) continue;
 
             // Try different content structures
-            const items =
-                tabContent?.richGridRenderer?.contents ||
-                tabContent?.sectionListRenderer?.contents?.[0]?.itemSectionRenderer?.contents ||
-                [];
+            const gridContents = tabContent?.richGridRenderer?.contents || [];
+            const sectionContents = tabContent?.sectionListRenderer?.contents?.[0]?.itemSectionRenderer?.contents || [];
+            const items = gridContents.length > 0 ? gridContents : sectionContents;
 
             for (const item of items) {
-                if (videos.length >= limit) break;
+                // Check for continuation item
+                if (item?.continuationItemRenderer) {
+                    continuationToken = extractContinuationToken(item.continuationItemRenderer);
+                    continue;
+                }
+
+                if (videos.length >= limit) continue;
 
                 const videoRenderer =
                     item?.richItemRenderer?.content?.videoRenderer ||
@@ -189,21 +225,135 @@ function extractVideosFromHTML(html: string, limit: number): YouTubeVideo[] {
                     item?.videoRenderer;
 
                 if (videoRenderer?.videoId) {
-                    videos.push(parseVideoRenderer(videoRenderer));
+                    videos.push(parseVideoRenderer(videoRenderer, context));
                 }
             }
 
-            if (videos.length > 0) break;
+            if (videos.length > 0 || continuationToken) break;
         }
 
-        return videos;
+        return { videos, continuationToken, context };
     } catch {
-        return [];
+        return { videos: [], continuationToken: null, context: null };
     }
 }
 
-function parseVideoRenderer(renderer: any): YouTubeVideo {
+/**
+ * Extract continuation token from continuationItemRenderer
+ */
+function extractContinuationToken(renderer: any): string | null {
+    return renderer?.continuationEndpoint?.continuationCommand?.token || null;
+}
+
+/**
+ * Fetch more videos using continuation token
+ */
+async function fetchMoreVideos(
+    videos: YouTubeVideo[],
+    initialToken: string,
+    context: ChannelContext,
+    limit: number,
+): Promise<void> {
+    let continuationToken: string | null = initialToken;
+    const maxIterations = 50; // Safety limit to prevent infinite loops
+    let iterations = 0;
+
+    while (continuationToken && videos.length < limit && iterations < maxIterations) {
+        iterations++;
+
+        try {
+            const response = await fetch(
+                `https://www.youtube.com/youtubei/v1/browse?key=${context.apiKey}`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'User-Agent': USER_AGENT,
+                        'Content-Type': 'application/json',
+                        'Accept-Language': 'en-US,en;q=0.9',
+                    },
+                    body: JSON.stringify({
+                        context: {
+                            client: {
+                                clientName: 'WEB',
+                                clientVersion: '2.20240101.00.00',
+                                hl: 'en',
+                                gl: 'US',
+                            },
+                        },
+                        continuation: continuationToken,
+                    }),
+                },
+            );
+
+            if (!response.ok) {
+                break;
+            }
+
+            const data = await response.json();
+            const { newVideos, nextToken } = parseContinuationResponse(data, context);
+
+            videos.push(...newVideos);
+            continuationToken = nextToken;
+
+            // Add a small delay to avoid rate limiting
+            if (continuationToken && videos.length < limit) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+        } catch {
+            break;
+        }
+    }
+}
+
+/**
+ * Parse continuation API response
+ */
+function parseContinuationResponse(
+    data: any,
+    context: ChannelContext,
+): { newVideos: YouTubeVideo[]; nextToken: string | null } {
+    const newVideos: YouTubeVideo[] = [];
+    let nextToken: string | null = null;
+
+    const actions = data?.onResponseReceivedActions || [];
+
+    for (const action of actions) {
+        const items = action?.appendContinuationItemsAction?.continuationItems || [];
+
+        for (const item of items) {
+            // Check for continuation item
+            if (item?.continuationItemRenderer) {
+                nextToken = extractContinuationToken(item.continuationItemRenderer);
+                continue;
+            }
+
+            const videoRenderer =
+                item?.richItemRenderer?.content?.videoRenderer ||
+                item?.gridVideoRenderer ||
+                item?.videoRenderer;
+
+            if (videoRenderer?.videoId) {
+                newVideos.push(parseVideoRenderer(videoRenderer, context));
+            }
+        }
+    }
+
+    return { newVideos, nextToken };
+}
+
+/**
+ * Parse video renderer with channel context
+ */
+function parseVideoRenderer(renderer: any, context?: ChannelContext): YouTubeVideo {
     const videoId = renderer.videoId;
+
+    // Extract channelId and channelTitle from renderer if available, or use context
+    const channelId = renderer.ownerText?.runs?.[0]?.navigationEndpoint?.browseEndpoint?.browseId
+        || context?.channelId
+        || '';
+    const channelTitle = renderer.ownerText?.runs?.[0]?.text
+        || context?.channelTitle
+        || '';
 
     return {
         videoId,
@@ -220,6 +370,8 @@ function parseVideoRenderer(renderer: any): YouTubeVideo {
             high: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
             maxres: `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`,
         },
+        channelId,
+        channelTitle,
     };
 }
 
