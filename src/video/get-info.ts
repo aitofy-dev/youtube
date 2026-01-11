@@ -5,6 +5,7 @@
  */
 
 import { YouTubeToolsError, ErrorCodes, type YouTubeVideo } from '../types';
+import { extractVideoId } from '../utils/extract-video-id';
 
 const USER_AGENT =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
@@ -46,9 +47,10 @@ export interface VideoChapter {
 
 /**
  * Get detailed video information
+ * @param videoIdOrUrl - Video ID or YouTube URL
  */
 export async function getVideoInfo(videoIdOrUrl: string): Promise<VideoInfo> {
-    const videoId = parseVideoId(videoIdOrUrl);
+    const videoId = extractVideoId(videoIdOrUrl);
     const html = await fetchVideoPage(videoId);
 
     return extractVideoInfo(html, videoId);
@@ -56,9 +58,10 @@ export async function getVideoInfo(videoIdOrUrl: string): Promise<VideoInfo> {
 
 /**
  * Get basic video info (faster, less data)
+ * @param videoIdOrUrl - Video ID or YouTube URL
  */
 export async function getBasicVideoInfo(videoIdOrUrl: string): Promise<YouTubeVideo> {
-    const videoId = parseVideoId(videoIdOrUrl);
+    const videoId = extractVideoId(videoIdOrUrl);
 
     // Use oEmbed for fast basic info
     const url = `https://www.youtube.com/oembed?url=https://youtube.com/watch?v=${videoId}&format=json`;
@@ -95,32 +98,7 @@ export async function getBasicVideoInfo(videoIdOrUrl: string): Promise<YouTubeVi
 // Internal Functions
 // ============================================================================
 
-function parseVideoId(input: string): string {
-    // Already a video ID
-    if (/^[a-zA-Z0-9_-]{11}$/.test(input)) {
-        return input;
-    }
 
-    // Try to extract from URL
-    const patterns = [
-        /(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
-        /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
-        /youtube\.com\/v\/([a-zA-Z0-9_-]{11})/,
-        /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
-    ];
-
-    for (const pattern of patterns) {
-        const match = input.match(pattern);
-        if (match) {
-            return match[1];
-        }
-    }
-
-    throw new YouTubeToolsError(
-        `Invalid video ID or URL: ${input}`,
-        ErrorCodes.VIDEO_NOT_FOUND,
-    );
-}
 
 async function fetchVideoPage(videoId: string): Promise<string> {
     const url = `https://www.youtube.com/watch?v=${videoId}`;

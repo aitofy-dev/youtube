@@ -48,8 +48,16 @@ pnpm add @aitofy/youtube
 ```typescript
 import { getTranscript, getTranscriptText } from '@aitofy/youtube';
 
-// Get transcript as segments
+// ✨ NEW: Now accepts both video IDs and URLs!
+
+// Using video ID
 const segments = await getTranscript('dQw4w9WgXcQ');
+
+// Using YouTube URLs (all formats supported)
+const segments = await getTranscript('https://youtu.be/dQw4w9WgXcQ');
+const segments = await getTranscript('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+const segments = await getTranscript('https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=120s');
+
 console.log(segments);
 // [
 //   { start: 0.24, duration: 2.5, text: 'Never gonna give you up' },
@@ -58,9 +66,37 @@ console.log(segments);
 // ]
 
 // Get transcript as plain text
-const text = await getTranscriptText('dQw4w9WgXcQ');
+const text = await getTranscriptText('https://youtu.be/dQw4w9WgXcQ');
 console.log(text);
 // "Never gonna give you up\nNever gonna let you down\n..."
+```
+
+### Supported URL Formats
+
+All video functions accept these URL formats:
+
+```typescript
+// ✅ Video ID
+'J6OnBDmErUg'
+
+// ✅ Short URLs
+'https://youtu.be/J6OnBDmErUg'
+'https://youtu.be/J6OnBDmErUg?si=xyz123'
+
+// ✅ Watch URLs
+'https://www.youtube.com/watch?v=J6OnBDmErUg'
+'https://www.youtube.com/watch?v=J6OnBDmErUg&t=120s'
+'https://www.youtube.com/watch?v=J6OnBDmErUg&list=PLxxx'
+
+// ✅ Embed URLs
+'https://www.youtube.com/embed/J6OnBDmErUg'
+
+// ✅ Shorts URLs
+'https://www.youtube.com/shorts/J6OnBDmErUg'
+
+// ✅ Other formats
+'https://www.youtube.com/v/J6OnBDmErUg'
+'https://www.youtube.com/live/J6OnBDmErUg'
 ```
 
 ### Get Channel Videos
@@ -127,13 +163,15 @@ console.log(info);
 
 ### Transcript Functions
 
+All transcript functions accept both **video IDs** and **YouTube URLs**.
+
 | Function | Description |
 |----------|-------------|
-| `getTranscript(videoId, options?)` | Get transcript segments |
-| `getTranscriptText(videoId, options?)` | Get transcript as plain text |
-| `getTranscriptSRT(videoId, options?)` | Get transcript as SRT subtitles |
-| `getTranscriptVTT(videoId, options?)` | Get transcript as WebVTT |
-| `listTranscripts(videoId)` | List available transcript languages |
+| `getTranscript(videoIdOrUrl, options?)` | Get transcript segments |
+| `getTranscriptText(videoIdOrUrl, options?)` | Get transcript as plain text |
+| `getTranscriptSRT(videoIdOrUrl, options?)` | Get transcript as SRT subtitles |
+| `getTranscriptVTT(videoIdOrUrl, options?)` | Get transcript as WebVTT |
+| `listTranscripts(videoIdOrUrl)` | List available transcript languages |
 
 ### Channel Functions
 
@@ -144,10 +182,12 @@ console.log(info);
 
 ### Video Functions
 
+All video functions accept both **video IDs** and **YouTube URLs**.
+
 | Function | Description |
 |----------|-------------|
-| `getVideoInfo(videoId)` | Get detailed video info |
-| `getBasicVideoInfo(videoId)` | Get basic video info (faster) |
+| `getVideoInfo(videoIdOrUrl)` | Get detailed video info |
+| `getBasicVideoInfo(videoIdOrUrl)` | Get basic video info (faster) |
 | `searchVideos(query, options?)` | Search YouTube videos |
 
 ---

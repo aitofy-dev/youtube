@@ -190,6 +190,7 @@ export class YouTubeToolsError extends Error {
 }
 
 export const ErrorCodes = {
+    INVALID_INPUT: 'INVALID_INPUT',
     CHANNEL_NOT_FOUND: 'CHANNEL_NOT_FOUND',
     VIDEO_NOT_FOUND: 'VIDEO_NOT_FOUND',
     TRANSCRIPT_NOT_AVAILABLE: 'TRANSCRIPT_NOT_AVAILABLE',

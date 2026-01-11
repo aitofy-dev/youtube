@@ -6,6 +6,7 @@
  */
 
 import { YouTubeToolsError, ErrorCodes, type TranscriptSegment } from '../types';
+import { extractVideoId } from '../utils/extract-video-id';
 
 const USER_AGENT =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
@@ -40,19 +41,24 @@ export interface FetchTranscriptOptions {
 
 /**
  * Fetch available transcript tracks for a video
+ * @param videoIdOrUrl - Video ID or YouTube URL
  */
-export async function listTranscripts(videoId: string): Promise<TranscriptTrack[]> {
+export async function listTranscripts(videoIdOrUrl: string): Promise<TranscriptTrack[]> {
+    const videoId = extractVideoId(videoIdOrUrl);
     const captionsData = await fetchCaptionsData(videoId);
     return captionsData.tracks;
 }
 
 /**
  * Fetch transcript segments for a video
+ * @param videoIdOrUrl - Video ID or YouTube URL
+ * @param options - Fetch options (languages, preferGenerated)
  */
 export async function getTranscript(
-    videoId: string,
+    videoIdOrUrl: string,
     options: FetchTranscriptOptions = {},
 ): Promise<TranscriptSegment[]> {
+    const videoId = extractVideoId(videoIdOrUrl);
     const { languages = ['en'], preferGenerated = false } = options;
 
     // Get available tracks via Innertube API
@@ -83,34 +89,40 @@ export async function getTranscript(
 
 /**
  * Fetch transcript and format as plain text
+ * @param videoIdOrUrl - Video ID or YouTube URL
+ * @param options - Fetch options (languages, preferGenerated)
  */
 export async function getTranscriptText(
-    videoId: string,
+    videoIdOrUrl: string,
     options: FetchTranscriptOptions = {},
 ): Promise<string> {
-    const segments = await getTranscript(videoId, options);
+    const segments = await getTranscript(videoIdOrUrl, options);
     return segments.map((s) => s.text).join('\n');
 }
 
 /**
  * Fetch transcript and format as SRT
+ * @param videoIdOrUrl - Video ID or YouTube URL
+ * @param options - Fetch options (languages, preferGenerated)
  */
 export async function getTranscriptSRT(
-    videoId: string,
+    videoIdOrUrl: string,
     options: FetchTranscriptOptions = {},
 ): Promise<string> {
-    const segments = await getTranscript(videoId, options);
+    const segments = await getTranscript(videoIdOrUrl, options);
     return formatAsSRT(segments);
 }
 
 /**
  * Fetch transcript and format as WebVTT
+ * @param videoIdOrUrl - Video ID or YouTube URL
+ * @param options - Fetch options (languages, preferGenerated)
  */
 export async function getTranscriptVTT(
-    videoId: string,
+    videoIdOrUrl: string,
     options: FetchTranscriptOptions = {},
 ): Promise<string> {
-    const segments = await getTranscript(videoId, options);
+    const segments = await getTranscript(videoIdOrUrl, options);
     return formatAsVTT(segments);
 }
 

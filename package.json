@@ -1,6 +1,6 @@
 {
   "name": "@aitofy/youtube",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Free YouTube utilities - get transcripts, channel videos, and more without API key",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
